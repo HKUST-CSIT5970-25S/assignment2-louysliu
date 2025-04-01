@@ -3,6 +3,8 @@ package hk.ust.csit5970;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Iterator;
+import java.util.Map.Entry;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -54,6 +56,21 @@ public class BigramFrequencyStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			if (words.length > 1){
+				KEY.set( words[0]);
+				for (int i = 1; i < words.length; i++) {
+					String w = words[i];
+					// Skip empty words
+					if (w.length() == 0) {
+						continue;
+					}
+					STRIPE.increment(w);
+					context.write(KEY, STRIPE);
+					KEY.set(w);
+					STRIPE.clear();
+				}
+			}
+
 		}
 	}
 
@@ -75,6 +92,31 @@ public class BigramFrequencyStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			Iterator<HashMapStringIntWritable> iter = stripes.iterator();
+			String first_w = key.toString();
+			while (iter.hasNext()) {
+				SUM_STRIPES.plus(iter.next());
+			}
+
+			float total_count = 0.0f;
+			for (Entry<String, Integer> mapElement : SUM_STRIPES.entrySet()) { 
+				total_count += mapElement.getValue();
+			}
+
+			BIGRAM.set(first_w, "");
+			FREQ.set(total_count);
+			context.write(BIGRAM, FREQ);
+			
+	        for (Entry<String, Integer> mapElement : SUM_STRIPES.entrySet()) { 
+	            String second_w = (String) mapElement.getKey();
+	            int value = (int) mapElement.getValue();
+	            BIGRAM.set(first_w, second_w);
+	            FREQ.set((float)value / total_count);
+	            context.write(BIGRAM, FREQ);
+	        }
+	        
+	        SUM_STRIPES.clear();
+
 		}
 	}
 
@@ -94,6 +136,15 @@ public class BigramFrequencyStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			Iterator<HashMapStringIntWritable> iter = stripes.iterator();
+
+			while (iter.hasNext()) {
+				for ( String second_w : iter.next().keySet() ) {
+					SUM_STRIPES.increment(second_w);
+				}
+			}
+			context.write(key, SUM_STRIPES);
+			SUM_STRIPES.clear();
 		}
 	}
 
