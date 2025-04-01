@@ -53,6 +53,20 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			while (doc_tokenizer.hasMoreTokens()) {
+				String word = doc_tokenizer.nextToken();
+				if (word.length() == 0) {
+					continue;
+				}
+				word_set.put(word, 1);
+			}
+
+			Text text = new Text();
+			IntWritable one = new IntWritable(1);
+			for (String word : word_set.keySet()) {
+				text.set(word);
+				context.write(text, one);
+			}
 		}
 	}
 
@@ -61,11 +75,21 @@ public class CORPairs extends Configured implements Tool {
 	 */
 	private static class CORReducer1 extends
 			Reducer<Text, IntWritable, Text, IntWritable> {
+		private final static Text KEY = new Text();
+		private final static IntWritable VALUE = new IntWritable();
+
 		@Override
 		public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+			for (IntWritable value : values) {
+				sum += value.get();
+			}
+			KEY.set(key);
+			VALUE.set(sum);
+			context.write(KEY, VALUE);
 		}
 	}
 
@@ -81,6 +105,28 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			HashMap<String, Integer> word_set = new HashMap<String, Integer>();
+			while (doc_tokenizer.hasMoreTokens()) {
+				String word = doc_tokenizer.nextToken();
+				if (word.length() == 0) {
+					continue;
+				}
+				word_set.put(word, 1);
+			}
+
+			// get sorted list of words
+			List<String> sorted_words = new ArrayList<String>(word_set.keySet());
+			Collections.sort(sorted_words);
+
+			// generate all possible pairs
+			PairOfStrings pair = new PairOfStrings();
+			IntWritable one = new IntWritable(1);
+			for (int i = 0; i < sorted_words.size(); i++) {
+				for (int j = i + 1; j < sorted_words.size(); j++) {
+					pair.set(sorted_words.get(i), sorted_words.get(j));
+					context.write(pair, one);
+				}
+			}
 		}
 	}
 
@@ -93,6 +139,11 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+			for (IntWritable value : values) {
+				sum += value.get();
+			}
+			context.write(key, new IntWritable(sum));
 		}
 	}
 
@@ -131,7 +182,7 @@ public class CORPairs extends Configured implements Tool {
 					line = reader.readLine();
 				}
 				reader.close();
-				LOG.info("finished！");
+				LOG.info("finished!");
 			} catch (Exception e) {
 				System.out.println(e.getMessage());
 			}
@@ -145,6 +196,12 @@ public class CORPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			int sum = 0;
+			for (IntWritable value : values) {
+				sum += value.get();
+			}
+			double cor = (double) sum / (word_total_map.get(key.getLeftElement()) * word_total_map.get(key.getRightElement()));
+			context.write(key, new DoubleWritable(cor));
 		}
 	}
 
